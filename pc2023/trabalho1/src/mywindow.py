@@ -19,9 +19,11 @@ class MyWindow(QMainWindow):
         fit = QAction(QIcon("fit.png"), "fit", self)
         bezier = QAction(QIcon("bezier.png"), "bezier", self)
         line = QAction(QIcon("line.png"), "line", self)
+        reset = QAction(QIcon("reset.png"), "reset", self)
         tb.addAction(fit)
         tb.addAction(bezier)
         tb.addAction(line)
+        tb.addAction(reset)
         tb.actionTriggered[QAction].connect(self.tbpressed)
     
     def tbpressed(self, a):
@@ -29,8 +31,13 @@ class MyWindow(QMainWindow):
             self.canvas.fitWorldToViewport()
         if a.text() == "line":
             self.canvas.mode = 0
+            self.canvas.beziercount = 0
             print('mode', self.canvas.mode, sep=' ')
         if a.text() == "bezier":
             self.canvas.mode = 1
+            self.canvas.linecount = 0
             print('mode', self.canvas.mode, sep=' ')
+        if a.text() == "reset":
+            self.canvas.resetCanvas()
+            print('reset')
         

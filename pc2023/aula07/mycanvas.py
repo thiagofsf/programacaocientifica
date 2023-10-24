@@ -3,6 +3,12 @@ from PyQt5.QtWidgets import *
 from OpenGL.GL import *
 from PyQt5 import QtCore
 
+from he.hecontroller import HeController
+from he.hemodel import HeModel
+from geometry.segments.line import Line
+from geometry.point import Point
+from compgeom.tesselation import Tesselation
+
 class MyCanvas(QtOpenGL.QGLWidget):
 
     def __init__(self):

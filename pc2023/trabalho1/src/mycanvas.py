@@ -30,11 +30,18 @@ class MyCanvas(QtOpenGL.QGLWidget):
         self.m_pt2 = QtCore.QPointF(0.0,0.0)
 
         self.mode = 0    #0 para linha, 1 para bezier
-        self.beziercount = 0
-        self.granuality = 50
+        self.granuality = 100
 
-        self.insersegment = False
+        self.linecount = 0
+        self.beziercount = 0
+
+        #Controla se houve movimento para iniciar tracking do desenho
+        self.moved =  False
+
         #self.cont = 0    #variavel usada para contar quantas vezes paintGL foi executado (usada para resolver um bug que deixava varias linhas desenhadas ao redimensionar a janela)
+
+        #vamos rastrear o mouse independente de haver clique (press event)
+        self.setMouseTracking(True)
     
     def initializeGL(self):
         #glClearColor(1.0, 1.0, 1.0, 1.0)
@@ -67,8 +74,9 @@ class MyCanvas(QtOpenGL.QGLWidget):
         
         #limpando buffer para evitar bug de linhas antigas no redimensionamento
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-        #se o botão do mouse estiver pressionado, mostrar linha da curva na tela
-        if(self.m_buttonPressed == True):
+        
+        #Para gerar previsualização da Linha, checamos se o primeiro ponto foi coletado, caso sim, atualizamos conforme movimento do mouse para desenhar
+        if(self.linecount == 1):
             glCallList(self.list)
             glDeleteLists(self.list, 1)
             self.list = glGenLists(1)
@@ -81,6 +89,45 @@ class MyCanvas(QtOpenGL.QGLWidget):
             glVertex2f(pt1_U.x(), pt1_U.y())
             glEnd()
             glEndList()
+        #se o tipo de linha for bezier vamos mostrar com linhas retas a ligação entre os pontos de controle
+        #Checamos se há primeiro ponto coletado, se sim, desenhar linhas entre pontos de controle
+        if(self.mode == 1):
+            #caso estejamos coletando o pt1, desenhar entre pt0 e pt1
+            if(self.beziercount == 1):
+                glCallList(self.list)
+                glDeleteLists(self.list, 1)
+                self.list = glGenLists(1)
+                glNewList(self.list, GL_COMPILE)
+                pt0_U = self.convertPtCoordsToUniverse(self.m_pt0)
+                pt1_U = self.convertPtCoordsToUniverse(self.m_pt1)
+                glColor3f(1.0, 0.0, 0.0)
+                glLineStipple(1, 0xAAAA)
+                glEnable(GL_LINE_STIPPLE)
+                glBegin(GL_LINE_STRIP)
+                glVertex2f(pt0_U.x(), pt0_U.y())
+                glVertex2f(pt1_U.x(), pt1_U.y())
+                glEnd()
+                glEndList()
+            #caso estejamos coletando o pt2, desenhar entre pt0, pt1 e pt2
+            if(self.beziercount == 2):
+                glCallList(self.list)
+                glDeleteLists(self.list, 1)
+                self.list = glGenLists(1)
+                glNewList(self.list, GL_COMPILE)
+                pt0_U = self.convertPtCoordsToUniverse(self.m_pt0)
+                pt1_U = self.convertPtCoordsToUniverse(self.m_pt1)
+                pt2_U = self.convertPtCoordsToUniverse(self.m_pt2)
+                glColor3f(1.0, 0.0, 0.0)
+                glLineStipple(1, 0xAAAA)
+                glEnable(GL_LINE_STIPPLE)
+                glBegin(GL_LINE_STRIP)
+                glVertex2f(pt0_U.x(), pt0_U.y())
+                glVertex2f(pt1_U.x(), pt1_U.y())
+                glVertex2f(pt2_U.x(), pt2_U.y())
+                glEnd()
+                glEndList()
+                
+
         if not(self.m_hmodel.isEmpty()):
             #print("teste", self.cont)      #imprimindo teste
             #self.cont = self.cont + 1      #atualizando valor de contagem
@@ -103,25 +150,6 @@ class MyCanvas(QtOpenGL.QGLWidget):
                 for point in ptc:
                     glVertex2f(point.getX(), point.getY())
                 glEnd()
-            '''
-            for curv in segments:
-                ptsnumber = curv.getNumberOfPoints()
-                print('curv', i, ":", ptsnumber, sep=' ')
-                i+=1
-                ptc = curv.getPointsToDraw()
-                glColor3f(0.0,1.0,1.0)
-
-                if(ptsnumber>2):
-                    glBegin(GL_LINE_STRIP)
-                    for point in ptc:
-                        glVertex2f(point.getX(), point.getY())
-                    glEnd()
-                else:
-                    glBegin(GL_LINES)
-                    for point in ptc:
-                        glVertex2f(point.getX(), point.getY())
-                    glEnd()
-            '''
     
     def setModel(self, _model):
         self.m_model = _model
@@ -183,77 +211,105 @@ class MyCanvas(QtOpenGL.QGLWidget):
         y = self.m_B + mY
         return QtCore.QPointF(x,y)
 
+    #a forma de coleta da linha foi alterado para coletagem on release, assim, apenas setamos como true que o botão foi pressionado
     def mousePressEvent(self, event):
         self.m_buttonPressed = True
-        if(self.mode == 0):
-            self.m_pt0 = event.pos()
 
+    #na inicialização definimos para sempre rastrear o mouse, assim, conseguimos definir os pontos para linha guia interativamente
     def mouseMoveEvent(self, event):
         #coletando retas se mode == 0
         if(self.mode == 0):
-            if self.m_buttonPressed:
+            if(self.linecount == 1):
                 self.m_pt1 = event.pos()
                 self.update()
-
-    def mouseReleaseEvent(self, event):
-        if(self.mode == 0):
-            pt0_U = self.convertPtCoordsToUniverse(self.m_pt0)
-            pt1_U = self.convertPtCoordsToUniverse(self.m_pt1)
-            p0 = Point(pt0_U.x(), pt0_U.y())
-            p1 = Point(pt1_U.x(), pt1_U.y())
-            segment = Line(p0,p1)
-            self.m_controller.insertSegment(segment, 0.01)
-            self.update()
-            self.repaint()
-            self.m_buttonPressed = False
+        #coletando retas se mode ==1
         if(self.mode == 1):
+            #se o contador da bezier está em 1 o primeiro ponto foi coletado
+            #atualizar posição do ponto 2 pra previa
+            if(self.beziercount == 1):
+                self.m_pt1 = event.pos()
+                self.update()
+            if(self.beziercount == 2):
+                self.m_pt2 = event.pos()
+                self.update()
+
+    #toda a coleta se dará no evento (mouserelease)
+    def mouseReleaseEvent(self, event):
+        
+        #coletando retas (modo 0)
+        if(self.mode == 0):
+            #checamos se algum ponto foi coletado, se não coletamos o primeiro ponto e atualizamos o atributo
+            if(self.linecount == 0):
+                self.m_pt0 = event.pos()
+                self.m_pt1 = event.pos() #definimos o ponto 1 provisoriamente como o mesmo para tracking dinamico da linha guia, evita aparecerem linhas com pontos antigos
+                self.linecount+=1
+                self.update()
+                self.repaint()
+            #se o primeiro ponto foi coletado, coletamos o segundo ponto e adicionamos o segmento ao model
+            elif(self.linecount == 1):
+                self.m_pt1 = event.pos()
+                pt0_U = self.convertPtCoordsToUniverse(self.m_pt0)
+                pt1_U = self.convertPtCoordsToUniverse(self.m_pt1)
+                p0 = Point(pt0_U.x(), pt0_U.y())
+                p1 = Point(pt1_U.x(), pt1_U.y())
+                segment = Polyline([p0,p1])
+                self.m_controller.addSegment(segment, 0.01)
+                self.update()
+                self.repaint()
+                self.linecount=0 #resetando contagem de pontos para proxima linha
+            #botão foi solto (release)
+            self.m_buttonPressed = False 
+
+        #coletando as curvas bezier quadráticas (modo 1)    
+        if(self.mode == 1):
+            #checamos se algum ponto foi coletado, se não coletamos o primeiro ponto e atualizamos o atributo
             if(self.beziercount == 0):
                 self.m_pt0 = event.pos()
-                print('pos 0 coletada')
+                self.m_pt1 = event.pos() #definindo ponto para linhas guias interativas
                 self.beziercount+=1
-                self.m_buttonPressed = False
+                self.update()
+                self.repaint()
+            #Se um ponto foi coletado, vamos coletar o segundo ponto e atualizar o atributo
             elif(self.beziercount == 1):
                 self.m_pt1 = event.pos()
-                print('pos 1 coletada')
+                self.m_pt2 = event.pos() #definindo ponto para linhas guias interativas
                 self.beziercount+=1
-                self.m_buttonPressed = False
+                self.update()
+                self.repaint()
+            #se o segundo ponto foi coletado, vamos coletar o terceiro e ultimo ponto, adicionar segmento no model e resetar o atributo beziercount
             elif(self.beziercount == 2):
                 self.m_pt2 = event.pos()
-                print('pos 2 coletada')
                 #fim da coleta, adicionar curvas
-                self.beziercount = 0
-
+                self.beziercount = 0 #resetando atributo
+                #convertendo pontos
                 pt0_U = self.convertPtCoordsToUniverse(self.m_pt0)
                 pt1_U = self.convertPtCoordsToUniverse(self.m_pt1)
                 pt2_U = self.convertPtCoordsToUniverse(self.m_pt2)
-
-                p0 = Point(pt0_U.x(), pt0_U.y())
-                '''
-                segmento = Polyline()
-                segmento.addPoint(pt0_U.x(),pt0_U.y())
-                segmento.addPoint(pt1_U.x(),pt1_U.y())
-                segmento.addPoint(pt2_U.x(),pt2_U.y())
-                print(segmento.getNumberOfPoints())
-                #inserimos segmento na lista
-                self.m_controller.insertSegment(segmento, 0.01)
-                '''
+                #criando o segmento
+                segment = Polyline()
+                #adicionando primeiro ponto do segmento
+                segment.addPoint(pt0_U.x(), pt0_U.y())
+                #loop para encontrar as coordenadas x e y usando a formula para calculos de bezier quadratica com paretro t
+                #B(t) = (1-t)²P0 + 2t(1-t)P1 + t²P2
+                #a variável self.granuality controla a granularidade do loop
                 for t in range(0, self.granuality):
                     t = t/self.granuality
-                    x = pt1_U.x() + (1 - t)**2 * (pt0_U.x()-pt1_U.x()) + t**2 * (pt2_U.x() - pt1_U.x())
-                    y = pt1_U.y() + (1 - t)**2 * (pt0_U.y()-pt1_U.y()) + t**2 * (pt2_U.y() - pt1_U.y())
-                    #definimos segundo ponto do segmento
-                    p1 = Point(x, y)
-                    print('Imprimindo pontos', pt0_U.x(), pt0_U.y(), x, y)
-                    #agora temos 2 pontos, criamos a linha
-                    segment = Line(p0,p1)
-                    #inserimos segmento na lista
-                    self.m_controller.insertSegment(segment, 0.01)
-                    #atualizar p0 para proximo loop
-                    p0 = Point(x, y)
-                ''''''
+                    x = (1-t)**2*pt0_U.x() + 2*t*(1-t)*pt1_U.x() + t**2*pt2_U.x()
+                    y = (1-t)**2*pt0_U.y() + 2*t*(1-t)*pt1_U.y() + t**2*pt2_U.y()
+                    #para cada novo ponto calculado, adicionar ao segmento
+                    segment.addPoint(x,y)
+                #após o fim do calculo dos pontos inserimos o segmento na lista
+                self.m_controller.addSegment(segment, 0.01)
                 self.update()
                 self.repaint()
-                self.m_buttonPressed = False
+            #botão foi solto (release)
+            self.m_buttonPressed = False
+    
+    #função que limpa o canvas removendo todos os segmentos da tela
+    def resetCanvas(self):
+        self.m_hmodel.clearAll()
+        self.update()
+        self.repaint()
                 
             
         

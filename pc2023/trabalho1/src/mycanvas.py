@@ -31,7 +31,7 @@ class MyCanvas(QtOpenGL.QGLWidget):
 
         self.mode = 0    #0 para linha, 1 para bezier
         self.beziercount = 0
-        self.granuality = 100
+        self.granuality = 50
 
         self.insersegment = False
         #self.cont = 0    #variavel usada para contar quantas vezes paintGL foi executado (usada para resolver um bug que deixava varias linhas desenhadas ao redimensionar a janela)
@@ -96,8 +96,14 @@ class MyCanvas(QtOpenGL.QGLWidget):
                     glVertex2d(pts[triangs[j][2]].getX(), pts[triangs[j][2]].getY())
                     glEnd()
             segments = self.m_hmodel.getSegments()
-            print(segments)
-            i=0
+            for curv in segments:
+                ptc = curv.getPointsToDraw()
+                glColor3f(0.0,1.0,1.0)
+                glBegin(GL_LINE_STRIP)
+                for point in ptc:
+                    glVertex2f(point.getX(), point.getY())
+                glEnd()
+            '''
             for curv in segments:
                 ptsnumber = curv.getNumberOfPoints()
                 print('curv', i, ":", ptsnumber, sep=' ')
@@ -115,6 +121,7 @@ class MyCanvas(QtOpenGL.QGLWidget):
                     for point in ptc:
                         glVertex2f(point.getX(), point.getY())
                     glEnd()
+            '''
     
     def setModel(self, _model):
         self.m_model = _model
@@ -219,7 +226,9 @@ class MyCanvas(QtOpenGL.QGLWidget):
                 pt0_U = self.convertPtCoordsToUniverse(self.m_pt0)
                 pt1_U = self.convertPtCoordsToUniverse(self.m_pt1)
                 pt2_U = self.convertPtCoordsToUniverse(self.m_pt2)
-                
+
+                p0 = Point(pt0_U.x(), pt0_U.y())
+                '''
                 segmento = Polyline()
                 segmento.addPoint(pt0_U.x(),pt0_U.y())
                 segmento.addPoint(pt1_U.x(),pt1_U.y())
@@ -241,7 +250,7 @@ class MyCanvas(QtOpenGL.QGLWidget):
                     self.m_controller.insertSegment(segment, 0.01)
                     #atualizar p0 para proximo loop
                     p0 = Point(x, y)
-                '''
+                ''''''
                 self.update()
                 self.repaint()
                 self.m_buttonPressed = False

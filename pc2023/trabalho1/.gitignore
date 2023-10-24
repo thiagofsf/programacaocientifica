@@ -1,0 +1,4 @@
+# ignorando arquivos de cache do python
+__pycache__/
+#ignorando arquivo gerado na execução
+src/mywindow.pyc

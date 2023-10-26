@@ -101,8 +101,6 @@ class MyCanvas(QtOpenGL.QGLWidget):
                 pt0_U = self.convertPtCoordsToUniverse(self.m_pt0)
                 pt1_U = self.convertPtCoordsToUniverse(self.m_pt1)
                 glColor3f(1.0, 0.0, 0.0)
-                glLineStipple(1, 0xAAAA)
-                glEnable(GL_LINE_STIPPLE)
                 glBegin(GL_LINE_STRIP)
                 glVertex2f(pt0_U.x(), pt0_U.y())
                 glVertex2f(pt1_U.x(), pt1_U.y())
@@ -118,8 +116,6 @@ class MyCanvas(QtOpenGL.QGLWidget):
                 pt1_U = self.convertPtCoordsToUniverse(self.m_pt1)
                 pt2_U = self.convertPtCoordsToUniverse(self.m_pt2)
                 glColor3f(1.0, 0.0, 0.0)
-                glLineStipple(1, 0xAAAA)
-                glEnable(GL_LINE_STIPPLE)
                 glBegin(GL_LINE_STRIP)
                 glVertex2f(pt0_U.x(), pt0_U.y())
                 glVertex2f(pt1_U.x(), pt1_U.y())
@@ -127,7 +123,6 @@ class MyCanvas(QtOpenGL.QGLWidget):
                 glEnd()
                 glEndList()
                 
-
         if not(self.m_hmodel.isEmpty()):
             #print("teste", self.cont)      #imprimindo teste
             #self.cont = self.cont + 1      #atualizando valor de contagem
